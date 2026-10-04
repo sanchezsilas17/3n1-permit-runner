@@ -23,7 +23,8 @@
   .tabs button { border:0; border-right:1px solid var(--line); background:#111; color:#fff; padding:12px 2px; font-size:15px; font-weight:700; }
   .tabs button:last-child { border-right:0; }
   .tabs button.on { background:var(--gold); color:#111; }
-  .panel { padding:12px; }
+  .jobs-bar { padding:12px 12px 0; }
+  .jobs-bar input { width:100%; background:#111; color:#fff8ea; border:1px solid var(--gold); padding:12px; font-size:18px; }
   .card, .job { background:#111; border:1px solid var(--line); border-left:4px solid var(--gold); padding:12px; margin-bottom:10px; }
   h3 { margin:0 0 4px; font-family:"Libre Baskerville",Georgia,serif; color:var(--gold-2); font-size:22px; }
   p, .note { color:var(--muted); font-size:17px; line-height:1.4; }
@@ -60,6 +61,7 @@
     <button data-tab="help">AI help</button>
     <button data-tab="work2">Progress</button>
   </div>
+  <div class="jobs-bar" id="jobsBar"><input id="jobSearch" type="search" placeholder="Search customer name" /></div>
   <section id="work" class="panel"></section>
   <section id="estimate" class="panel" hidden>
     <label>Customer</label><input id="eCustomer" placeholder="Name" />
@@ -135,7 +137,9 @@ function jobCard(j,i){
   return "<article class='job'><div class='row' style='justify-content:space-between'><h3>"+esc(j.customer)+"</h3><span class='pill'>"+esc(j.status)+"</span></div><p>"+esc(j.address)+" · "+esc(j.city)+"</p><p>"+esc(j.work||"")+"</p><p>Your fee "+money(j.fee)+" · city fee "+money(j.cityFee)+" · "+(j.paid? esc(j.payMethod||"paid") : "unpaid")+"</p><div class='row'><button class='ghost' onclick='advance("+i+")'>Next step</button><a class='ghost' href='tel:"+esc(j.phone)+"'>Call</a></div></article>";
 }
 function render(){
-  document.getElementById("work").innerHTML = jobs.length ? jobs.map(jobCard).join("") : "<div class='empty'>No work yet. Open Estimate and price the job on site.</div>";
+  var q = (document.getElementById("jobSearch").value || "").toLowerCase();
+  var shown = jobs.map(function(j,i){ return {j:j, i:i}; }).filter(function(row){ return !q || (row.j.customer || "").toLowerCase().indexOf(q) !== -1; });
+  document.getElementById("work").innerHTML = !jobs.length ? "<div class='empty'>No work yet. Open Estimate and price the job on site.</div>" : (!shown.length ? "<div class='empty'>No customer matches that name.</div>" : shown.map(function(row){ return jobCard(row.j, row.i); }).join(""));
   document.getElementById("work2").innerHTML = jobs.length ? jobs.map(function(j){
     return "<article class='card'><h3>"+esc(j.customer)+"</h3><p>"+STEPS.map(function(s){ return (s===j.status?"<b>"+s+"</b>":s); }).join(" → ")+"</p></article>";
   }).join("") : "<div class='empty'>Progress shows here after you save an estimate.</div>";
@@ -154,6 +158,7 @@ document.querySelectorAll(".tabs button").forEach(function(btn){
     document.querySelectorAll(".tabs button").forEach(function(b){ b.classList.remove("on"); });
     btn.classList.add("on");
     ["work","estimate","cities","pay","scan","sign","help","work2"].forEach(function(id){ document.getElementById(id).hidden = id !== btn.dataset.tab; });
+    document.getElementById("jobsBar").hidden = btn.dataset.tab !== "work";
     render();
   };
 });
@@ -257,8 +262,7 @@ document.getElementById("downloadForm").onclick = function(){
   var a = document.createElement("a");
   a.href = jobs[i].signedForm;
   a.download = "3N1-signed-permit.jpg";
-  a.click();
-};
+document.getElementById("jobSearch").addEventListener("input", render);
 render();
 </script>
 </body>
