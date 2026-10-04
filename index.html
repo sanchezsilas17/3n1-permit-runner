@@ -262,6 +262,8 @@ document.getElementById("downloadForm").onclick = function(){
   var a = document.createElement("a");
   a.href = jobs[i].signedForm;
   a.download = "3N1-signed-permit.jpg";
+  a.click();
+};
 document.getElementById("jobSearch").addEventListener("input", render);
 render();
 </script>
