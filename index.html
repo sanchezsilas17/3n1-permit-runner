@@ -179,33 +179,47 @@ document.getElementById("markPaid").onclick = function(){
   if (!jobs[i]) return;
   jobs[i].paid = true; jobs[i].status = "paid"; jobs[i].payMethod = document.getElementById("payMethod").value; save();
 };
+function showReceipt(j){
+  var box = document.getElementById("receipt");
+  box.hidden = false;
+  box.innerHTML = "<h3>Receipt</h3><p>"+esc(j.receipt).replace(/\n/g,"<br>")+"</p>";
+}
+function sendText(phone, msg){
+  var number = String(phone || "").replace(/[^\d]/g, "");
+  if (navigator.share) {
+    navigator.share({ title:"3N1 receipt", text: msg }).catch(function(){});
+    return;
+  }
+  location.href = "sms:"+(number ? "+1"+number.replace(/^1/, "") : "")+"&body="+encodeURIComponent(msg);
+}
 document.getElementById("payText").onclick = function(){
   var i = document.getElementById("payJob").value;
-  if (!jobs[i]) return;
+  if (!jobs[i]) { alert("Save an estimate first, then open Pay."); return; }
   var j = jobs[i];
-  var msg = "3N1 Permit Runner. "+j.work+" at "+j.address+". My fee is "+money(j.fee)+". City fee is separate. Zelle or Venmo to (442) 230-1823, or cash before I leave.";
-  location.href = "sms:"+(j.phone||"")+"?body="+encodeURIComponent(msg);
+  var msg = "3N1 Permit Runner. "+(j.work||"Permit run")+" at "+j.address+". My fee is "+money(j.fee)+". City fee is separate. Zelle or Venmo to (442) 230-1823, or cash before I leave.";
+  sendText(j.phone, msg);
 };
 function receiptText(j){
-  var when = new Date().toLocaleDateString();
-  return "3N1 PERMIT RUNNER RECEIPT\nDate: "+when+"\nCustomer: "+(j.customer||"")+"\nPhone: "+(j.phone||"")+"\nAddress: "+(j.address||"")+"\nCity: "+(j.city||"")+"\nWork: "+(j.work||"")+"\nService fee: "+money(j.fee)+"\nPaid by: "+(j.payMethod||"unpaid")+"\nCity fee is separate and paid in the applicant name.\nThank you. Erica, (442) 230-1823";
+  var when = new Date().toLocaleString();
+  return "3N1 PERMIT RUNNER RECEIPT\nDate: "+when+"\nCustomer: "+(j.customer||"")+"\nPhone: "+(j.phone||"")+"\nAddress: "+(j.address||"")+"\nCity: "+(j.city||"")+"\nWork: "+(j.work||"Permit run")+"\nService fee: "+money(j.fee)+"\nPaid by: "+(j.payMethod||"unpaid")+"\nCity fee is separate and paid in the applicant name.\nThank you. Erica, (442) 230-1823";
 }
 document.getElementById("makeReceipt").onclick = function(){
   var i = document.getElementById("payJob").value;
-  if (!jobs[i]) return;
+  if (!jobs[i]) { alert("Save an estimate first, then open Pay and pick the job."); return; }
+  jobs[i].payMethod = document.getElementById("payMethod").value;
   jobs[i].receipt = receiptText(jobs[i]);
-  save();
-  var box = document.getElementById("receipt");
-  box.hidden = false;
-  box.innerHTML = "<h3>Receipt</h3><p>"+esc(jobs[i].receipt).replace(/\n/g,"<br>")+"</p>";
+  showReceipt(jobs[i]);
+  localStorage.setItem(KEY, JSON.stringify(jobs));
 };
 document.getElementById("sendReceipt").onclick = function(){
   var i = document.getElementById("payJob").value;
-  if (!jobs[i]) return;
-  var msg = jobs[i].receipt || receiptText(jobs[i]);
+  if (!jobs[i]) { alert("Save an estimate first, then open Pay and pick the job."); return; }
+  jobs[i].payMethod = document.getElementById("payMethod").value;
+  var msg = receiptText(jobs[i]);
   jobs[i].receipt = msg;
-  save();
-  location.href = "sms:"+(jobs[i].phone||"")+"?body="+encodeURIComponent(msg);
+  showReceipt(jobs[i]);
+  localStorage.setItem(KEY, JSON.stringify(jobs));
+  sendText(jobs[i].phone, msg);
 };
 document.getElementById("scanFile").onchange = function(ev){
   var i = document.getElementById("scanJob").value;
