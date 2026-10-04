@@ -76,17 +76,22 @@
   </section>
   <section id="cities" class="panel" hidden></section>
   <section id="pay" class="panel" hidden>
-    <article class="card"><h3>Cash</h3><p>Collect before you leave the driveway.</p></article>
-    <article class="card"><h3>Zelle</h3><p>Send a request to (442) 230-1823. Mark paid when it hits.</p></article>
-    <article class="card"><h3>Venmo</h3><p>Ask them to send before you drive. Do not take their card number.</p></article>
+    <p class="note">Receipts ready. Fill this in, or pull a saved job, then make the receipt.</p>
     <label>Job</label><select id="payJob"></select>
-    <label>Method</label>
-    <select id="payMethod"><option>Cash</option><option>Zelle</option><option>Venmo</option><option>Check</option></select>
-    <button class="primary" id="markPaid">Mark paid</button>
-    <button class="ghost" id="payText">Text payment request</button>
-    <button class="primary" id="makeReceipt">Make receipt</button>
-    <button class="ghost" id="sendReceipt">Text receipt</button>
-    <div id="receipt" class="card" hidden></div>
+    <button class="ghost" id="fillJob" type="button">Use this job</button>
+    <label>Customer</label><input id="rCustomer" placeholder="Customer name" />
+    <label>Phone</label><input id="rPhone" placeholder="(760) 000-0000" />
+    <label>Address</label><input id="rAddress" placeholder="Street, city" />
+    <label>Work</label><input id="rWork" placeholder="Permit run" />
+    <label>Your fee</label><input id="rFee" type="number" value="125" />
+    <label>Paid by</label>
+    <select id="payMethod"><option>Cash</option><option>Zelle</option><option>Venmo</option><option>Check</option><option>Unpaid</option></select>
+    <button class="primary" id="makeReceipt" type="button">Make receipt</button>
+    <label>Receipt</label>
+    <textarea id="receiptBox" readonly placeholder="Your receipt will show here."></textarea>
+    <button class="primary" id="copyReceipt" type="button">Copy receipt</button>
+    <a class="primary" id="sendReceipt" href="#">Text receipt</a>
+    <button class="ghost" id="markPaid" type="button">Mark job paid</button>
   </section>
   <section id="scan" class="panel" hidden>
     <label>Job</label><select id="scanJob"></select>
@@ -179,47 +184,50 @@ document.getElementById("markPaid").onclick = function(){
   if (!jobs[i]) return;
   jobs[i].paid = true; jobs[i].status = "paid"; jobs[i].payMethod = document.getElementById("payMethod").value; save();
 };
-function showReceipt(j){
-  var box = document.getElementById("receipt");
-  box.hidden = false;
-  box.innerHTML = "<h3>Receipt</h3><p>"+esc(j.receipt).replace(/\n/g,"<br>")+"</p>";
+function currentReceipt(){
+  return "3N1 PERMIT RUNNER RECEIPT\nDate: "+new Date().toLocaleString()+"\nCustomer: "+document.getElementById("rCustomer").value+"\nPhone: "+document.getElementById("rPhone").value+"\nAddress: "+document.getElementById("rAddress").value+"\nWork: "+(document.getElementById("rWork").value || "Permit run")+"\nService fee: "+money(document.getElementById("rFee").value)+"\nPaid by: "+document.getElementById("payMethod").value+"\nCity fee is separate and paid in the applicant name.\nThank you. Erica, (442) 230-1823";
 }
-function sendText(phone, msg){
-  var number = String(phone || "").replace(/[^\d]/g, "");
-  if (navigator.share) {
-    navigator.share({ title:"3N1 receipt", text: msg }).catch(function(){});
-    return;
-  }
-  location.href = "sms:"+(number ? "+1"+number.replace(/^1/, "") : "")+"&body="+encodeURIComponent(msg);
-}
-document.getElementById("payText").onclick = function(){
+document.getElementById("fillJob").onclick = function(){
   var i = document.getElementById("payJob").value;
-  if (!jobs[i]) { alert("Save an estimate first, then open Pay."); return; }
-  var j = jobs[i];
-  var msg = "3N1 Permit Runner. "+(j.work||"Permit run")+" at "+j.address+". My fee is "+money(j.fee)+". City fee is separate. Zelle or Venmo to (442) 230-1823, or cash before I leave.";
-  sendText(j.phone, msg);
+  if (!jobs[i]) { alert("No saved job yet. Type the receipt below."); return; }
+  document.getElementById("rCustomer").value = jobs[i].customer || "";
+  document.getElementById("rPhone").value = jobs[i].phone || "";
+  document.getElementById("rAddress").value = jobs[i].address || "";
+  document.getElementById("rWork").value = jobs[i].work || "";
+  document.getElementById("rFee").value = jobs[i].fee || 0;
 };
-function receiptText(j){
-  var when = new Date().toLocaleString();
-  return "3N1 PERMIT RUNNER RECEIPT\nDate: "+when+"\nCustomer: "+(j.customer||"")+"\nPhone: "+(j.phone||"")+"\nAddress: "+(j.address||"")+"\nCity: "+(j.city||"")+"\nWork: "+(j.work||"Permit run")+"\nService fee: "+money(j.fee)+"\nPaid by: "+(j.payMethod||"unpaid")+"\nCity fee is separate and paid in the applicant name.\nThank you. Erica, (442) 230-1823";
-}
 document.getElementById("makeReceipt").onclick = function(){
-  var i = document.getElementById("payJob").value;
-  if (!jobs[i]) { alert("Save an estimate first, then open Pay and pick the job."); return; }
-  jobs[i].payMethod = document.getElementById("payMethod").value;
-  jobs[i].receipt = receiptText(jobs[i]);
-  showReceipt(jobs[i]);
-  localStorage.setItem(KEY, JSON.stringify(jobs));
+  if (!document.getElementById("rCustomer").value.trim()) { alert("Type the customer name first."); return; }
+  document.getElementById("receiptBox").value = currentReceipt();
 };
-document.getElementById("sendReceipt").onclick = function(){
+document.getElementById("copyReceipt").onclick = function(){
+  var box = document.getElementById("receiptBox");
+  if (!box.value) box.value = currentReceipt();
+  box.focus();
+  box.select();
+  var copied = false;
+  try { copied = document.execCommand("copy"); } catch (e) {}
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(box.value).then(function(){ alert("Receipt copied. Open Messages, paste, and send."); }).catch(function(){ alert(copied ? "Receipt copied. Open Messages and paste." : "Receipt is selected. Tap Copy, then open Messages and paste."); });
+  } else {
+    alert(copied ? "Receipt copied. Open Messages and paste." : "Receipt is selected. Hold your finger on it, tap Copy, then paste in Messages.");
+  }
+};
+document.getElementById("sendReceipt").onclick = function(e){
+  e.preventDefault();
+  var box = document.getElementById("receiptBox");
+  if (!box.value) box.value = currentReceipt();
+  var number = document.getElementById("rPhone").value.replace(/[^\d]/g, "");
+  var href = "sms:"+(number ? number : "")+"&body="+encodeURIComponent(box.value);
+  var a = document.createElement("a");
+  a.href = href;
+  a.click();
+};
+document.getElementById("markPaid").onclick = function(){
   var i = document.getElementById("payJob").value;
-  if (!jobs[i]) { alert("Save an estimate first, then open Pay and pick the job."); return; }
-  jobs[i].payMethod = document.getElementById("payMethod").value;
-  var msg = receiptText(jobs[i]);
-  jobs[i].receipt = msg;
-  showReceipt(jobs[i]);
-  localStorage.setItem(KEY, JSON.stringify(jobs));
-  sendText(jobs[i].phone, msg);
+  if (!jobs[i]) { alert("No saved job to mark paid."); return; }
+  jobs[i].paid = true; jobs[i].status = "paid"; jobs[i].payMethod = document.getElementById("payMethod").value; save();
+  alert("Marked paid.");
 };
 document.getElementById("scanFile").onchange = function(ev){
   var i = document.getElementById("scanJob").value;
