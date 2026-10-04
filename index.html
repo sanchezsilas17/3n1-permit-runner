@@ -60,6 +60,7 @@
     <button data-tab="sign">Sign</button>
     <button data-tab="help">AI help</button>
     <button data-tab="plan">Plan</button>
+    <button data-tab="earth">Earth</button>
   </div>
   <div class="jobs-bar" id="jobsBar"><input id="jobSearch" type="search" placeholder="Search customer name" /></div>
   <section id="work" class="panel"></section>
@@ -119,6 +120,11 @@
     <button class="helpq" data-q="What do I bring to Brawley?">What do I bring to Brawley?</button>
     <button class="helpq" data-q="Can I sign the permit?">Can I sign the permit?</button>
     <button class="helpq" data-q="How do I get paid?">How do I get paid?</button>
+  </section>
+  <section id="earth" class="panel" hidden>
+    <label>Address</label>
+    <input id="earthAddress2" placeholder="Street, city" />
+    <a class="primary" id="earthBtn" href="#">Open Google Earth</a>
   </section>
   <section id="plan" class="panel" hidden>
     <p class="note">Measure the room, sketch the planogram, then charge for the drawing.</p>
@@ -348,11 +354,12 @@ function drawRoom(){
   var area = Math.round(L*W);
   document.getElementById("measureOut").textContent = L+" ft by "+W+" ft. Area "+area+" sq ft. Wall length "+Math.round(2*(L+W))+" ft.";
 }
-document.getElementById("openEarth").onclick = function(){
-  var address = document.getElementById("earthAddress").value.trim();
+function openEarth(inputId){
+  var address = document.getElementById(inputId).value.trim();
   if (!address) { alert("Type the address first."); return; }
   window.open("https://earth.google.com/web/search/"+encodeURIComponent(address), "_blank");
-};
+}
+document.getElementById("earthBtn").onclick = function(e){ e.preventDefault(); openEarth("earthAddress2"); };
 var planning = false;
 function planPos(e){ var r = plan.getBoundingClientRect(); var t = e.touches ? e.touches[0] : e; return {x:(t.clientX-r.left)*(plan.width/r.width), y:(t.clientY-r.top)*(plan.height/r.height)}; }
 plan.addEventListener("pointerdown", function(e){ planning = true; var p = planPos(e); pctx.beginPath(); pctx.moveTo(p.x,p.y); });
