@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#000000" />
+<meta name="apple-mobile-web-app-title" content="3N1 Permit Runner" />
+<title>3N1 Permit Runner</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=Libre+Baskerville:wght@700&display=swap" rel="stylesheet" />
+<style>
+  :root { --bg:#000; --ink:#fff8ea; --muted:#fff3d0; --gold:#f0c14b; --gold-2:#ffe7a3; --line:#5a4a2a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#000; color:var(--ink); font-family:"IBM Plex Sans",sans-serif; font-size:18px; }
+  .wrap { max-width:440px; margin:0 auto; min-height:100vh; padding-bottom:28px; }
+  header { padding:22px 16px 14px; border-bottom:2px solid var(--gold); }
+  .brand { display:flex; gap:12px; align-items:center; }
+  .mark { width:78px; height:78px; border:2px solid var(--gold); color:var(--gold-2); display:grid; place-items:center; font-family:"Libre Baskerville",Georgia,serif; font-size:26px; }
+  .kicker { margin:0; color:var(--gold); letter-spacing:.14em; text-transform:uppercase; font-size:14px; font-weight:700; }
+  h1 { margin:0; font-family:"Libre Baskerville",Georgia,serif; font-size:32px; color:var(--gold-2); }
+  .sub { margin:8px 0 0; color:#fff; font-size:16px; }
+  .tabs { display:flex; flex-wrap:wrap; gap:8px; padding:16px 16px 0; }
+  .tabs button { border:1px solid var(--line); background:#141414; color:#fff8ea; padding:12px 14px; font-size:16px; font-weight:700; border-radius:0; }
+  .tabs button.on { background:var(--gold); color:#111; border-color:var(--gold); }
+  .panel { padding:16px; }
+  .jobs-bar { padding:12px 12px 0; }
+  .jobs-bar input { width:100%; background:#111; color:#fff8ea; border:1px solid var(--gold); padding:12px; font-size:18px; }
+  .card, .job { background:#111; border:1px solid var(--line); border-left:4px solid var(--gold); padding:12px; margin-bottom:10px; }
+  h3 { margin:0 0 4px; font-family:"Libre Baskerville",Georgia,serif; color:var(--gold-2); font-size:22px; }
+  p, .note { color:var(--muted); font-size:17px; line-height:1.4; }
+  label { display:block; margin:10px 0 4px; color:var(--gold-2); font-size:14px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+  input, select, textarea { width:100%; background:#000; color:#fff; border:1px solid var(--line); padding:12px; font-size:18px; font-family:inherit; }
+  textarea { min-height:80px; }
+  .primary, .ghost { border:0; padding:13px; font-size:16px; font-weight:700; text-transform:uppercase; }
+  .primary { background:var(--gold); color:#111; width:100%; margin-top:10px; }
+  .ghost { background:#111; color:var(--gold-2); border:1px solid var(--gold); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .pill { border:1px solid var(--gold); color:var(--gold-2); padding:3px 7px; font-size:13px; font-weight:700; text-transform:uppercase; }
+  a.link { color:#ffe7a3; border:1px solid var(--gold); padding:8px 10px; text-decoration:none; font-weight:700; display:inline-block; margin:4px 4px 0 0; }
+  canvas { width:100%; height:180px; background:#fff; touch-action:none; }
+  img.scan { width:100%; margin-top:8px; border:1px solid var(--gold); }
+  .empty { color:#fff3d0; text-align:center; padding:18px 6px; }
+  .helpq { width:100%; background:#111; color:#fff; border:1px solid var(--line); text-align:left; padding:12px; margin-top:8px; font-size:16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><div class="mark">3N1</div><div><p class="kicker">Imperial Valley</p><h1>Permit Runner</h1></div></div>
+    <p class="sub">Track the job, price it on site, file the packet, get paid.</p>
+  </header>
+  <div class="tabs">
+    <button class="on" data-tab="work">Work</button>
+    <button data-tab="estimate">Estimate</button>
+    <button data-tab="cities">Cities</button>
+    <button data-tab="pay">Pay</button>
+    <button data-tab="scan">Scan</button>
+    <button data-tab="sign">Sign</button>
+    <button data-tab="plan">Plan</button>
+    <button data-tab="map">Map</button>
+    <button data-tab="help">Help</button>
+  </div>
+  <div class="jobs-bar" id="jobsBar"><input id="jobSearch" type="search" placeholder="Search customer name" /></div>
+  <section id="work" class="panel"></section>
+  <section id="estimate" class="panel" hidden>
+    <label>Customer</label><input id="eCustomer" placeholder="Name" />
+    <label>Phone</label><input id="ePhone" placeholder="(760) 000-0000" />
+    <label>Address</label><input id="eAddress" placeholder="Street, city" />
+    <label>City</label>
+    <select id="eCity"><option>El Centro</option><option>Brawley</option><option>Calipatria</option><option>Calexico</option><option>Imperial County</option><option>Imperial</option><option>Holtville</option></select>
+    <label>Work</label><textarea id="eWork" placeholder="Water heater swap, fence, reroof"></textarea>
+    <label>Your fee</label><input id="eFee" type="number" value="125" />
+    <label>City fee, their card</label><input id="eCityFee" type="number" value="0" />
+    <button class="primary" id="saveEstimate">Save estimate and start job</button>
+  </section>
+  <section id="cities" class="panel" hidden></section>
+  <section id="pay" class="panel" hidden>
+    <article class="card"><h3>Venmo</h3><p>@Erica-Sanchez-245</p><img class="scan" src="https://cdn.jsdelivr.net/gh/sanchezsilas17/3n1-permit-runner@main/venmo-qr.jpg" alt="Venmo QR code" /></article>
+    <article class="card"><h3>Cash App</h3><p>$SanchezErica17</p><img class="scan" src="https://cdn.jsdelivr.net/gh/sanchezsilas17/3n1-permit-runner@main/cashapp-qr.jpg" alt="Cash App QR code" /></article>
+    <label>Job</label><select id="payJob"></select>
+    <button class="ghost" id="fillJob" type="button">Use this job</button>
+    <label>Customer</label><input id="rCustomer" placeholder="Customer name" />
+    <label>Phone</label><input id="rPhone" placeholder="(760) 000-0000" />
+    <label>Address</label><input id="rAddress" placeholder="Street, city" />
+    <label>Work</label><input id="rWork" placeholder="Permit run" />
+    <label>Your fee</label><input id="rFee" type="number" value="125" />
+    <label>Paid by</label>
+    <select id="payMethod"><option>Cash</option><option>Venmo</option><option>Cash App</option><option>Zelle</option><option>Check</option><option>Unpaid</option></select>
+    <button class="primary" id="makeReceipt" type="button">Make receipt</button>
+    <label>Receipt</label>
+    <textarea id="receiptBox" readonly placeholder="Your receipt will show here."></textarea>
+    <button class="primary" id="copyReceipt" type="button">Copy receipt</button>
+    <a class="primary" id="sendReceipt" href="#">Text receipt</a>
+    <button class="ghost" id="markPaid" type="button">Mark job paid</button>
+  </section>
+  <section id="scan" class="panel" hidden>
+    <label>Job</label><select id="scanJob"></select>
+    <label>Scan paperwork</label>
+    <input id="scanFile" type="file" accept="image/*" capture="environment" />
+    <p class="note">Use the camera on the application, plans, and receipt. Photos stay on this phone.</p>
+    <div id="scanList"></div>
+  </section>
+  <section id="sign" class="panel" hidden>
+    <label>Job</label><select id="signJob"></select>
+    <label>Customer signature</label>
+    <canvas id="pad" width="700" height="280"></canvas>
+    <div class="row"><button class="ghost" id="clearSign">Clear</button></div>
+    <button class="primary" id="saveSign">Save signature</button>
+    <button class="primary" id="stampForm">Put signature on permit form</button>
+    <button class="ghost" id="downloadForm">Download signed form</button>
+    <p class="note">Scan the city form first. The signature is placed on that form and saved to this phone. You still do not sign as the applicant.</p>
+    <div id="signPreview"></div>
+  </section>
+  <section id="help" class="panel" hidden>
+    <label>Ask</label><input id="ask" placeholder="What do I bring to El Centro?" />
+    <button class="primary" id="askBtn">Ask</button>
+    <div id="answer" class="card" hidden></div>
+    <button class="helpq" data-q="What do I charge?">What do I charge?</button>
+    <button class="helpq" data-q="What do I bring to Brawley?">What do I bring to Brawley?</button>
+    <button class="helpq" data-q="Can I sign the permit?">Can I sign the permit?</button>
+    <button class="helpq" data-q="How do I get paid?">How do I get paid?</button>
+  </section>
+  <section id="earth" class="panel" hidden>
+    <label>Address</label>
+    <input id="earthAddress2" placeholder="Street, city" />
+    <a class="primary" id="earthBtn" href="#">Open Google Earth</a>
+  </section>
+  <section id="plan" class="panel" hidden>
+    <p class="note">Measure the room, sketch the planogram, then charge for the drawing.</p>
+    <label>Length, feet</label><input id="mLen" type="number" value="20" />
+    <label>Width, feet</label><input id="mWid" type="number" value="12" />
+    <button class="primary" id="calcMeasure" type="button">Measure</button>
+    <p id="measureOut" class="note"></p>
+    <label>Sketch fee</label>
+    <select id="planFee">
+      <option value="150">Measured sketch, $150</option>
+      <option value="250">Planogram with fixture layout, $250</option>
+      <option value="400">Measured drawing for a permit packet, $400</option>
+    </select>
+    <label>Draw on the plan</label>
+    <canvas id="planPad" width="700" height="420"></canvas>
+    <div class="row">
+      <button class="ghost" id="clearPlan" type="button">Clear sketch</button>
+    </div>
+    <button class="primary" id="savePlanFee" type="button">Add drawing fee to receipt</button>
+    <p class="note">$150 is a measured sketch. $250 is a fixture planogram. $400 is a measured drawing they can put in the permit packet. Collect the fee before you draw the final.</p>
+  </section>
+  <section id="work2" class="panel" hidden></section>
+</div>
+<script>
+const KEY = "n3-runner-v1";
+const CITIES = {
+  "El Centro": { where:"1275 Main Street", phone:"(760) 337-4508", links:[["Permits","https://www.cityofelcentro.org/164/Permits"],["Forms","https://www.cityofelcentro.org/1398/Planning-Applications"],["Application","https://www.cityofelcentro.org/DocumentCenter/View/248"]] },
+  "Brawley": { where:"205 S Imperial Avenue", phone:"(760) 344-8622", links:[["Building","https://www.brawley-ca.gov/departments/development-services/building-division"]] },
+  "Calipatria": { where:"125 N Park Avenue", phone:"(760) 348-4141", links:[["Planning","https://www.calipatria.com/the-city/departments/planning/"],["Packet","http://www.calipatria.com/media/managed/forms/PERMIT_APPLICATION_PACKET_.pdf"]] },
+  "Calexico": { where:"608 Heber Avenue", phone:"(760) 768-2118", links:[["City site","https://www.calexico.ca.gov/"]] },
+  "Imperial County": { where:"Civic Access", phone:"County Planning", links:[["Portal","https://imperialcountyca-energovweb.tylerhost.net/apps/selfservice#/home"],["Rules","https://www.icpds.com/building/requirements"],["Apply","https://publicworks.imperialcounty.org/apply/"]] },
+  "Imperial": { where:"420 S Imperial Avenue", phone:"(760) 355-1152", links:[["Portal","https://www6.citizenserve.com/Portal/PortalController?Action=showPermit&ctzPagePrefix=Portal_&installationID=211"]] },
+  "Holtville": { where:"121 W 5th Street", phone:"(760) 356-2912", links:[["Building","https://www.holtville.ca.gov/building-planning/building-and-planning/building-department/"]] }
+};
+const STEPS = ["estimate","packet ready","on the way","submitted","corrections","approved","paid"];
+let jobs = JSON.parse(localStorage.getItem(KEY) || "[]");
+function save(){ localStorage.setItem(KEY, JSON.stringify(jobs)); render(); }
+function esc(s){ var d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+function money(n){ return "$"+Math.round(Number(n)||0); }
+function options(sel){
+  sel.innerHTML = jobs.length ? jobs.map(function(j,i){ return "<option value='"+i+"'>"+esc(j.customer)+" · "+esc(j.address)+"</option>"; }).join("") : "<option value=''>No jobs yet</option>";
+}
+function jobCard(j,i){
+  return "<article class='job'><div class='row' style='justify-content:space-between'><h3>"+esc(j.customer)+"</h3><span class='pill'>"+esc(j.status)+"</span></div><p>"+esc(j.address)+" · "+esc(j.city)+"</p><p>"+esc(j.work||"")+"</p><p>Your fee "+money(j.fee)+" · city fee "+money(j.cityFee)+" · "+(j.paid? esc(j.payMethod||"paid") : "unpaid")+"</p><div class='row'><button class='ghost' onclick='advance("+i+")'>Next step</button><a class='ghost' href='tel:"+esc(j.phone)+"'>Call</a></div></article>";
+}
+function render(){
+  var q = (document.getElementById("jobSearch").value || "").toLowerCase();
+  var shown = jobs.map(function(j,i){ return {j:j, i:i}; }).filter(function(row){ return !q || (row.j.customer || "").toLowerCase().indexOf(q) !== -1; });
+  document.getElementById("work").innerHTML = !jobs.length ? "<div class='empty'>No work yet. Open Estimate and price the job on site.</div>" : (!shown.length ? "<div class='empty'>No customer matches that name.</div>" : shown.map(function(row){ return jobCard(row.j, row.i); }).join(""));
+  document.getElementById("work2").innerHTML = jobs.length ? jobs.map(function(j){
+    return "<article class='card'><h3>"+esc(j.customer)+"</h3><p>"+STEPS.map(function(s){ return (s===j.status?"<b>"+s+"</b>":s); }).join(" → ")+"</p></article>";
+  }).join("") : "<div class='empty'>Progress shows here after you save an estimate.</div>";
+  document.getElementById("cities").innerHTML = Object.keys(CITIES).map(function(name){
+    var c = CITIES[name];
+    return "<article class='card'><h3>"+name+"</h3><p>"+esc(c.where)+" · "+esc(c.phone)+"</p>"+c.links.map(function(l){ return "<a class='link' target='_blank' rel='noopener' href='"+l[1]+"'>"+l[0]+"</a>"; }).join("")+"</article>";
+  }).join("");
+  ["payJob","scanJob","signJob"].forEach(function(id){ options(document.getElementById(id)); });
+  var si = document.getElementById("scanJob").value;
+  document.getElementById("scanList").innerHTML = (jobs[si] && jobs[si].scans || []).map(function(src){ return "<img class='scan' src='"+src+"' alt='Paperwork scan' />"; }).join("");
+  var gi = document.getElementById("signJob").value;
+  document.getElementById("signPreview").innerHTML = (jobs[gi] && (jobs[gi].signedForm || jobs[gi].signature)) ? "<img class='scan' src='"+(jobs[gi].signedForm || jobs[gi].signature)+"' alt='Signed permit form' />" : "";
+}
+document.querySelectorAll(".tabs button").forEach(function(btn){
+  btn.onclick = function(){
+    document.querySelectorAll(".tabs button").forEach(function(b){ b.classList.remove("on"); });
+    btn.classList.add("on");
+    ["work","estimate","cities","pay","scan","sign","help","work2","plan"].forEach(function(id){ document.getElementById(id).hidden = id !== btn.dataset.tab; });
+    document.getElementById("jobsBar").hidden = btn.dataset.tab !== "work";
+    render();
+  };
+});
+document.getElementById("saveEstimate").onclick = function(){
+  var customer = document.getElementById("eCustomer").value.trim();
+  var address = document.getElementById("eAddress").value.trim();
+  if (!customer || !address) { alert("Customer and address are required."); return; }
+  jobs.unshift({ customer:customer, phone:document.getElementById("ePhone").value.trim(), address:address, city:document.getElementById("eCity").value, work:document.getElementById("eWork").value.trim(), fee:Number(document.getElementById("eFee").value||0), cityFee:Number(document.getElementById("eCityFee").value||0), status:"estimate", paid:false, scans:[], signature:"" });
+  save();
+  document.querySelector("[data-tab='work']").click();
+};
+function advance(i){ var n = STEPS.indexOf(jobs[i].status); jobs[i].status = STEPS[Math.min(STEPS.length-1, n+1)]; if (jobs[i].status==="paid") jobs[i].paid = true; save(); }
+document.getElementById("markPaid").onclick = function(){
+  var i = document.getElementById("payJob").value;
+  if (!jobs[i]) return;
+  jobs[i].paid = true; jobs[i].status = "paid"; jobs[i].payMethod = document.getElementById("payMethod").value; save();
+};
+function currentReceipt(){
+  return "3N1 PERMIT RUNNER RECEIPT\nDate: "+new Date().toLocaleString()+"\nCustomer: "+document.getElementById("rCustomer").value+"\nPhone: "+document.getElementById("rPhone").value+"\nAddress: "+document.getElementById("rAddress").value+"\nWork: "+(document.getElementById("rWork").value || "Permit run")+"\nService fee: "+money(document.getElementById("rFee").value)+"\nPaid by: "+document.getElementById("payMethod").value+"\nVenmo: @Erica-Sanchez-245\nCash App: $SanchezErica17\nCity fee is separate and paid in the applicant name.\nThank you. Erica, (442) 230-1823";
+}
+document.getElementById("fillJob").onclick = function(){
+  var i = document.getElementById("payJob").value;
+  if (!jobs[i]) { alert("No saved job yet. Type the receipt below."); return; }
+  document.getElementById("rCustomer").value = jobs[i].customer || "";
+  document.getElementById("rPhone").value = jobs[i].phone || "";
+  document.getElementById("rAddress").value = jobs[i].address || "";
+  document.getElementById("rWork").value = jobs[i].work || "";
+  document.getElementById("rFee").value = jobs[i].fee || 0;
+};
+document.getElementById("makeReceipt").onclick = function(){
+  if (!document.getElementById("rCustomer").value.trim()) { alert("Type the customer name first."); return; }
+  document.getElementById("receiptBox").value = currentReceipt();
+};
+document.getElementById("copyReceipt").onclick = function(){
+  var box = document.getElementById("receiptBox");
+  if (!box.value) box.value = currentReceipt();
+  box.focus();
+  box.select();
+  var copied = false;
+  try { copied = document.execCommand("copy"); } catch (e) {}
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(box.value).then(function(){ alert("Receipt copied. Open Messages, paste, and send."); }).catch(function(){ alert(copied ? "Receipt copied. Open Messages and paste." : "Receipt is selected. Tap Copy, then open Messages and paste."); });
+  } else {
+    alert(copied ? "Receipt copied. Open Messages and paste." : "Receipt is selected. Hold your finger on it, tap Copy, then paste in Messages.");
+  }
+};
+document.getElementById("sendReceipt").onclick = function(e){
+  e.preventDefault();
+  var box = document.getElementById("receiptBox");
+  if (!box.value) box.value = currentReceipt();
+  var number = document.getElementById("rPhone").value.replace(/[^\d]/g, "");
+  var href = "sms:"+(number ? number : "")+"&body="+encodeURIComponent(box.value);
+  var a = document.createElement("a");
+  a.href = href;
+  a.click();
+};
+document.getElementById("markPaid").onclick = function(){
+  var i = document.getElementById("payJob").value;
+  if (!jobs[i]) { alert("No saved job to mark paid."); return; }
+  jobs[i].paid = true; jobs[i].status = "paid"; jobs[i].payMethod = document.getElementById("payMethod").value; save();
+  alert("Marked paid.");
+};
+document.getElementById("scanFile").onchange = function(ev){
+  var i = document.getElementById("scanJob").value;
+  var file = ev.target.files && ev.target.files[0];
+  if (!jobs[i] || !file) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    var img = new Image();
+    img.onload = function(){
+      var c = document.createElement("canvas");
+      var scale = Math.min(1, 900/img.width);
+      c.width = Math.round(img.width*scale); c.height = Math.round(img.height*scale);
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      jobs[i].scans = jobs[i].scans || [];
+      jobs[i].scans.push(c.toDataURL("image/jpeg",0.6));
+      save();
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+};
+var pad = document.getElementById("pad");
+var ctx = pad.getContext("2d");
+ctx.fillStyle = "#fff"; ctx.fillRect(0,0,pad.width,pad.height);
+ctx.strokeStyle = "#111"; ctx.lineWidth = 3;
+var drawing = false;
+function pos(e){ var r = pad.getBoundingClientRect(); var t = e.touches ? e.touches[0] : e; return {x:(t.clientX-r.left)*(pad.width/r.width), y:(t.clientY-r.top)*(pad.height/r.height)}; }
+pad.addEventListener("pointerdown", function(e){ drawing = true; var p = pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); });
+pad.addEventListener("pointermove", function(e){ if (!drawing) return; var p = pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); });
+pad.addEventListener("pointerup", function(){ drawing = false; });
+document.getElementById("clearSign").onclick = function(){ ctx.fillStyle="#fff"; ctx.fillRect(0,0,pad.width,pad.height); };
+document.getElementById("saveSign").onclick = function(){
+  var i = document.getElementById("signJob").value;
+  if (!jobs[i]) return;
+  jobs[i].signature = pad.toDataURL("image/png");
+  save();
+};
+function answer(q){
+  q = q.toLowerCase();
+  var text = "Simple run is $125. Corrections trip is $75. County portal help is $150. Collect your fee before you drive. City fees are paid in their name.";
+  Object.keys(CITIES).forEach(function(name){ if (q.indexOf(name.toLowerCase())!==-1){ var c=CITIES[name]; text = name+" counter: "+c.where+", "+c.phone+". Open the city link in Cities before you leave."; }});
+  if (q.indexOf("sign")!==-1) text = "Do not sign the city application. The contractor or owner is the permit holder. The signature pad is only their approval for you to deliver the packet.";
+  if (q.indexOf("pay")!==-1 || q.indexOf("zelle")!==-1) text = "Cash, Zelle, Venmo, or check. Zelle to (442) 230-1823. Never store their card number in this app.";
+  if (q.indexOf("scan")!==-1) text = "Open Scan, pick the job, and use the camera on the application, plans, and receipt.";
+  document.getElementById("answer").hidden = false;
+  document.getElementById("answer").innerHTML = "<h3>Help</h3><p>"+esc(text)+"</p>";
+}
+document.getElementById("askBtn").onclick = function(){ answer(document.getElementById("ask").value); };
+document.querySelectorAll(".helpq").forEach(function(b){ b.onclick = function(){ answer(b.dataset.q); }; });
+
+document.getElementById("stampForm").onclick = function(){
+  var i = document.getElementById("signJob").value;
+  if (!jobs[i]) return;
+  var scan = (jobs[i].scans || [])[0];
+  if (!scan) { alert("Scan the permit form first."); return; }
+  jobs[i].signature = pad.toDataURL("image/png");
+  var form = new Image();
+  form.onload = function(){
+    var sig = new Image();
+    sig.onload = function(){
+      var c = document.createElement("canvas");
+      c.width = form.width; c.height = form.height;
+      var g = c.getContext("2d");
+      g.drawImage(form, 0, 0);
+      var w = Math.round(form.width * 0.42);
+      var h = Math.round(w * (sig.height / sig.width));
+      g.drawImage(sig, form.width - w - 24, form.height - h - 24, w, h);
+      jobs[i].signedForm = c.toDataURL("image/jpeg", 0.8);
+      save();
+    };
+    sig.src = jobs[i].signature;
+  };
+  form.src = scan;
+};
+document.getElementById("downloadForm").onclick = function(){
+  var i = document.getElementById("signJob").value;
+  if (!jobs[i] || !jobs[i].signedForm) { alert("Put the signature on the form first."); return; }
+  var a = document.createElement("a");
+  a.href = jobs[i].signedForm;
+  a.download = "3N1-signed-permit.jpg";
+  a.click();
+};
+document.getElementById("jobSearch").addEventListener("input", render);
+var plan = document.getElementById("planPad");
+var pctx = plan.getContext("2d");
+function drawRoom(){
+  var L = Number(document.getElementById("mLen").value)||0;
+  var W = Number(document.getElementById("mWid").value)||0;
+  pctx.fillStyle = "#fff";
+  pctx.fillRect(0,0,plan.width,plan.height);
+  pctx.strokeStyle = "#111";
+  pctx.lineWidth = 4;
+  pctx.strokeRect(40,40,620,300);
+  pctx.font = "22px sans-serif";
+  pctx.fillStyle = "#111";
+  pctx.fillText(L+" ft", 300, 30);
+  pctx.fillText(W+" ft", 8, 190);
+  var area = Math.round(L*W);
+  document.getElementById("measureOut").textContent = L+" ft by "+W+" ft. Area "+area+" sq ft. Wall length "+Math.round(2*(L+W))+" ft.";
+}
+function mapUrl(){
+  var address = "";
+  var search = document.getElementById("jobSearch");
+  var typed = document.getElementById("earthAddress2");
+  if (search && search.value.trim()) address = search.value.trim();
+  else if (typed && typed.value.trim()) address = typed.value.trim();
+  else if (jobs[0] && jobs[0].address) address = jobs[0].address;
+  else address = "Calipatria, California";
+  return "https://www.arcgis.com/apps/webappviewer/index.html?id=19214b2467784942a0cd8c8801dbaaa0";
+}
+function goMap(){
+  var a = document.createElement("a");
+  a.href = mapUrl();
+  a.target = "_top";
+  document.body.appendChild(a);
+  a.click();
+}
+document.querySelector("[data-tab='map']").onclick = function(){ setTimeout(goMap, 50); };
+document.getElementById("earthBtn").onclick = function(e){ e.preventDefault(); goMap(); };
+var planning = false;
+function planPos(e){ var r = plan.getBoundingClientRect(); var t = e.touches ? e.touches[0] : e; return {x:(t.clientX-r.left)*(plan.width/r.width), y:(t.clientY-r.top)*(plan.height/r.height)}; }
+plan.addEventListener("pointerdown", function(e){ planning = true; var p = planPos(e); pctx.beginPath(); pctx.moveTo(p.x,p.y); });
+plan.addEventListener("pointermove", function(e){ if (!planning) return; var p = planPos(e); pctx.lineTo(p.x,p.y); pctx.stroke(); });
+plan.addEventListener("pointerup", function(){ planning = false; });
+document.getElementById("clearPlan").onclick = drawRoom;
+document.getElementById("savePlanFee").onclick = function(){
+  var fee = document.getElementById("planFee").value;
+  var label = document.getElementById("planFee").selectedOptions[0].text;
+  document.getElementById("rFee").value = fee;
+  document.getElementById("rWork").value = label;
+  alert(label+". Open Pay and tap Make receipt.");
+  document.querySelector("[data-tab='pay']").click();
+};
+drawRoom();
+render();
+</script>
+</body>
+</html>
