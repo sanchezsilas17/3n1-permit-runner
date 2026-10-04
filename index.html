@@ -59,7 +59,7 @@
     <button data-tab="scan">Scan</button>
     <button data-tab="sign">Sign</button>
     <button data-tab="help">AI help</button>
-    <button data-tab="work2">Progress</button>
+    <button data-tab="plan">Plan</button>
   </div>
   <div class="jobs-bar" id="jobsBar"><input id="jobSearch" type="search" placeholder="Search customer name" /></div>
   <section id="work" class="panel"></section>
@@ -120,6 +120,26 @@
     <button class="helpq" data-q="Can I sign the permit?">Can I sign the permit?</button>
     <button class="helpq" data-q="How do I get paid?">How do I get paid?</button>
   </section>
+  <section id="plan" class="panel" hidden>
+    <p class="note">Measure the room, sketch the planogram, then charge for the drawing.</p>
+    <label>Length, feet</label><input id="mLen" type="number" value="20" />
+    <label>Width, feet</label><input id="mWid" type="number" value="12" />
+    <button class="primary" id="calcMeasure" type="button">Measure</button>
+    <p id="measureOut" class="note"></p>
+    <label>Sketch fee</label>
+    <select id="planFee">
+      <option value="150">Measured sketch, $150</option>
+      <option value="250">Planogram with fixture layout, $250</option>
+      <option value="400">Measured drawing for a permit packet, $400</option>
+    </select>
+    <label>Draw on the plan</label>
+    <canvas id="planPad" width="700" height="420"></canvas>
+    <div class="row">
+      <button class="ghost" id="clearPlan" type="button">Clear sketch</button>
+    </div>
+    <button class="primary" id="savePlanFee" type="button">Add drawing fee to receipt</button>
+    <p class="note">$150 is a measured sketch. $250 is a fixture planogram. $400 is a measured drawing they can put in the permit packet. Collect the fee before you draw the final.</p>
+  </section>
   <section id="work2" class="panel" hidden></section>
 </div>
 <script>
@@ -165,7 +185,7 @@ document.querySelectorAll(".tabs button").forEach(function(btn){
   btn.onclick = function(){
     document.querySelectorAll(".tabs button").forEach(function(b){ b.classList.remove("on"); });
     btn.classList.add("on");
-    ["work","estimate","cities","pay","scan","sign","help","work2"].forEach(function(id){ document.getElementById(id).hidden = id !== btn.dataset.tab; });
+    ["work","estimate","cities","pay","scan","sign","help","work2","plan"].forEach(function(id){ document.getElementById(id).hidden = id !== btn.dataset.tab; });
     document.getElementById("jobsBar").hidden = btn.dataset.tab !== "work";
     render();
   };
@@ -311,6 +331,39 @@ document.getElementById("downloadForm").onclick = function(){
   a.click();
 };
 document.getElementById("jobSearch").addEventListener("input", render);
+var plan = document.getElementById("planPad");
+var pctx = plan.getContext("2d");
+function drawRoom(){
+  var L = Number(document.getElementById("mLen").value)||0;
+  var W = Number(document.getElementById("mWid").value)||0;
+  pctx.fillStyle = "#fff";
+  pctx.fillRect(0,0,plan.width,plan.height);
+  pctx.strokeStyle = "#111";
+  pctx.lineWidth = 4;
+  pctx.strokeRect(40,40,620,300);
+  pctx.font = "22px sans-serif";
+  pctx.fillStyle = "#111";
+  pctx.fillText(L+" ft", 300, 30);
+  pctx.fillText(W+" ft", 8, 190);
+  var area = Math.round(L*W);
+  document.getElementById("measureOut").textContent = L+" ft by "+W+" ft. Area "+area+" sq ft. Wall length "+Math.round(2*(L+W))+" ft.";
+}
+document.getElementById("calcMeasure").onclick = drawRoom;
+var planning = false;
+function planPos(e){ var r = plan.getBoundingClientRect(); var t = e.touches ? e.touches[0] : e; return {x:(t.clientX-r.left)*(plan.width/r.width), y:(t.clientY-r.top)*(plan.height/r.height)}; }
+plan.addEventListener("pointerdown", function(e){ planning = true; var p = planPos(e); pctx.beginPath(); pctx.moveTo(p.x,p.y); });
+plan.addEventListener("pointermove", function(e){ if (!planning) return; var p = planPos(e); pctx.lineTo(p.x,p.y); pctx.stroke(); });
+plan.addEventListener("pointerup", function(){ planning = false; });
+document.getElementById("clearPlan").onclick = drawRoom;
+document.getElementById("savePlanFee").onclick = function(){
+  var fee = document.getElementById("planFee").value;
+  var label = document.getElementById("planFee").selectedOptions[0].text;
+  document.getElementById("rFee").value = fee;
+  document.getElementById("rWork").value = label;
+  alert(label+". Open Pay and tap Make receipt.");
+  document.querySelector("[data-tab='pay']").click();
+};
+drawRoom();
 render();
 </script>
 </body>
