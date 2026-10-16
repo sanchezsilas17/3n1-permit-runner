@@ -68,9 +68,12 @@
     <label>Address</label><input id="eAddress" placeholder="Street, city" />
     <label>City</label>
     <select id="eCity"><option>El Centro</option><option>Brawley</option><option>Calipatria</option><option>Calexico</option><option>Imperial County</option><option>Imperial</option><option>Holtville</option></select>
+    <label>Work type</label>
+    <select id="eWorkType"><option value="">Other / not listed</option><option value="fence">Fence</option><option value="waterheater">Water heater</option></select>
     <label>Work</label><textarea id="eWork" placeholder="Water heater swap, fence, reroof"></textarea>
     <label>Your fee</label><input id="eFee" type="number" value="125" />
-    <label>City fee, their card</label><input id="eCityFee" type="number" value="0" />
+    <label>City fee, their card</label><input id="eCityFee" type="number" placeholder="Auto-fills; blank if unknown" />
+    <p class="note" id="feeNote"></p>
     <button class="primary" id="saveEstimate">Save estimate and start job</button>
   </section>
   <section id="cities" class="panel" hidden></section>
@@ -207,6 +210,25 @@ function render(){
   document.getElementById("signPreview").innerHTML = (jobs[gi] && (jobs[gi].signedForm || jobs[gi].signature)) ? "<img class='scan' src='"+(jobs[gi].signedForm || jobs[gi].signature)+"' alt='Signed permit form' />" : "";
 }
 
+
+// Base city permit fees (flat amounts only, from official schedules, 2026). Missing = unknown, left blank.
+// Add-ons (technology, state, plan check, zoning) are not included. Confirm with the city.
+var CITY_FEES = {
+  "Brawley": { fence:145, waterheater:73, asof:"Brawley fee schedule eff. Feb 1, 2026; plus a processing fee and add-ons" },
+  "Calexico": { waterheater:114.5, asof:"Calexico fee schedule Apr 2026; fence has two price options so enter it yourself" },
+  "Imperial County": { waterheater:71.8, asof:"County fee schedule Oct 2023; may be higher now" }
+};
+var feeAuto = true;
+function autoFee(){
+  var city = document.getElementById("eCity").value, type = document.getElementById("eWorkType").value;
+  var f = document.getElementById("eCityFee"), note = document.getElementById("feeNote");
+  var row = CITY_FEES[city], v = row && type ? row[type] : undefined;
+  if (v !== undefined) { f.value = v; feeAuto = true; note.textContent = "Auto-filled base fee. " + row.asof + ". Confirm with the city."; }
+  else if (feeAuto) { f.value = ""; note.textContent = type ? "No confirmed fee for this city and work type. Enter it yourself." : ""; }
+}
+document.getElementById("eCityFee").addEventListener("input", function(){ feeAuto = false; });
+document.getElementById("eCity").addEventListener("change", function(){ feeAuto = true; autoFee(); });
+document.getElementById("eWorkType").addEventListener("change", function(){ feeAuto = true; autoFee(); });
 function openJob(i){
   var j = jobs[i]; if (!j) return;
   var box = document.getElementById("jobDetail");
