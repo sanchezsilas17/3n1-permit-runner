@@ -240,6 +240,7 @@ function openJob(i){
     + "<div class='row'>"+(j.phone ? "<a class='ghost' href='tel:"+esc(j.phone)+"'>Call</a>" : "")
     + "<a class='ghost' target='_blank' rel='noopener' href='https://www.google.com/maps/search/?api=1&query="+encodeURIComponent((j.address || "")+" "+(j.city || ""))+"'>Map</a>"
     + "<button class='ghost' onclick='advance("+i+");openJob("+i+")'>Next step</button>"
+    + "<button class='ghost' onclick='editJob("+i+")'>Edit pricing</button>"
     + "<button class='ghost' onclick='closeJob()'>Back</button></div></article>"
     + (j.city && CITIES[j.city] ? "<article class='card'><h3>"+esc(j.city)+" office</h3><p>"+esc(CITIES[j.city].where)+" · "+esc(CITIES[j.city].phone)+"</p>"+CITIES[j.city].links.map(function(l){ return "<a class='link' target='_blank' rel='noopener' href='"+l[1]+"'>"+esc(l[0])+"</a>"; }).join("")+"</article>" : "");
   document.getElementById("work").hidden = true;
@@ -267,11 +268,34 @@ document.querySelectorAll(".tabs button").forEach(function(btn){
     render();
   };
 });
+var editIdx = null;
+function editJob(i){
+  var j = jobs[i]; if (!j) return;
+  editIdx = i;
+  document.getElementById("eCustomer").value = j.customer || "";
+  document.getElementById("ePhone").value = j.phone || "";
+  document.getElementById("eAddress").value = j.address || "";
+  document.getElementById("eCity").value = j.city || "";
+  document.getElementById("eWork").value = j.work || "";
+  document.getElementById("eFee").value = j.fee == null ? "" : j.fee;
+  document.getElementById("eCityFee").value = j.cityFee == null ? "" : j.cityFee;
+  feeAuto = false;
+  document.getElementById("saveEstimate").textContent = "Save changes to this job";
+  document.querySelector("[data-tab='estimate']").click();
+}
 document.getElementById("saveEstimate").onclick = function(){
   var customer = document.getElementById("eCustomer").value.trim();
   var address = document.getElementById("eAddress").value.trim();
   if (!customer || !address) { alert("Customer and address are required."); return; }
-  jobs.unshift({ customer:customer, phone:document.getElementById("ePhone").value.trim(), address:address, city:document.getElementById("eCity").value, work:document.getElementById("eWork").value.trim(), fee:Number(document.getElementById("eFee").value||0), cityFee:Number(document.getElementById("eCityFee").value||0), status:"estimate", paid:false, scans:[], signature:"" });
+  var vals = { customer:customer, phone:document.getElementById("ePhone").value.trim(), address:address, city:document.getElementById("eCity").value, work:document.getElementById("eWork").value.trim(), fee:Number(document.getElementById("eFee").value||0), cityFee:Number(document.getElementById("eCityFee").value||0) };
+  if (editIdx !== null && jobs[editIdx]) {
+    for (var k in vals) jobs[editIdx][k] = vals[k];
+    editIdx = null;
+    document.getElementById("saveEstimate").textContent = "Save estimate and start job";
+  } else {
+    vals.status = "estimate"; vals.paid = false; vals.scans = []; vals.signature = "";
+    jobs.unshift(vals);
+  }
   save();
   document.querySelector("[data-tab='work']").click();
 };
