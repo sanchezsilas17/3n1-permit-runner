@@ -160,8 +160,27 @@ const CITIES = {
   "Holtville": { where:"121 W 5th Street", phone:"(760) 356-2912", links:[["Building","https://www.holtville.ca.gov/building-planning/building-and-planning/building-department/"]] }
 };
 const STEPS = ["estimate","packet ready","on the way","submitted","corrections","approved","paid"];
-let jobs; try { jobs = JSON.parse(localStorage.getItem(KEY) || "[]"); if (!Array.isArray(jobs)) jobs = []; } catch(e){ jobs = []; }
-function save(){ localStorage.setItem(KEY, JSON.stringify(jobs)); render(); }
+var storageOK = true;
+function readStore(k){ try { return localStorage.getItem(k); } catch(e){ storageOK = false; return null; } }
+let jobs = [];
+(function(){
+  var raw = readStore(KEY) || readStore(KEY + "-backup");
+  if (!raw) return;
+  try { var p = JSON.parse(raw); if (Array.isArray(p)) jobs = p; }
+  catch(e){ try { localStorage.setItem(KEY + "-corrupt", raw); } catch(e2){} }
+})();
+function save(){
+  try {
+    var data = JSON.stringify(jobs);
+    localStorage.setItem(KEY, data);
+    localStorage.setItem(KEY + "-backup", data);
+    if (localStorage.getItem(KEY) !== data) throw new Error("not saved");
+  } catch(e){
+    if (storageOK) { storageOK = false; alert("This browser is blocking saving, so clients will disappear when you close the page. Open the app in Safari or Chrome (not inside another app, and not in private mode)."); }
+  }
+  render();
+}
+if (!readStore(KEY) && !storageOK) { setTimeout(function(){ alert("This browser is blocking saving. Open the app in Safari or Chrome, not private mode."); }, 500); }
 function esc(s){ var m = {}; m[String.fromCharCode(38)] = "\u0026amp;"; m[String.fromCharCode(60)] = "\u0026lt;"; m[String.fromCharCode(62)] = "\u0026gt;"; m[String.fromCharCode(34)] = "\u0026quot;"; m[String.fromCharCode(39)] = "\u0026#39;"; return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){ return m[c]; }); }
 function money(n){ return "$"+Math.round(Number(n)||0); }
 function options(sel){
