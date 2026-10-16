@@ -162,7 +162,7 @@ const CITIES = {
 const STEPS = ["estimate","packet ready","on the way","submitted","corrections","approved","paid"];
 let jobs; try { jobs = JSON.parse(localStorage.getItem(KEY) || "[]"); if (!Array.isArray(jobs)) jobs = []; } catch(e){ jobs = []; }
 function save(){ localStorage.setItem(KEY, JSON.stringify(jobs)); render(); }
-function esc(s){ return String(s == null ? "" : s).replace(/&/g,"&").replace(/</g,"<").replace(/>/g,">").replace(/"/g,""").replace(/'/g,"&#39;"); }
+function esc(s){ var m = {}; m[String.fromCharCode(38)] = "\u0026amp;"; m[String.fromCharCode(60)] = "\u0026lt;"; m[String.fromCharCode(62)] = "\u0026gt;"; m[String.fromCharCode(34)] = "\u0026quot;"; m[String.fromCharCode(39)] = "\u0026#39;"; return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){ return m[c]; }); }
 function money(n){ return "$"+Math.round(Number(n)||0); }
 function options(sel){
   sel.innerHTML = jobs.length ? jobs.map(function(j,i){ return "<option value='"+i+"'>"+esc(j.customer)+" · "+esc(j.address)+"</option>"; }).join("") : "<option value=''>No jobs yet</option>";
