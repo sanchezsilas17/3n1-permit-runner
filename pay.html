@@ -69,7 +69,7 @@
     <label>City</label>
     <select id="eCity"><option>El Centro</option><option>Brawley</option><option>Calipatria</option><option>Calexico</option><option>Imperial County</option><option>Imperial</option><option>Holtville</option></select>
     <label>Work type</label>
-    <select id="eWorkType"><option value="">Other / not listed</option><option value="fence">Fence (wood or metal)</option><option value="fencemasonry">Fence (block or masonry wall)</option><option value="waterheater">Water heater</option></select>
+    <select id="eWorkType"><option value="">Other / not listed</option><option value="fence">Fence (wood or metal)</option><option value="fencemasonry">Fence (block or masonry wall)</option><option value="waterheater">Water heater</option><option value="reroof">Reroof</option><option value="hvac">AC replacement</option><option value="furnace">Furnace or heat pump</option><option value="panel">Electrical panel upgrade</option><option value="repipe">Repipe or gas line</option><option value="solar5">Solar up to 5 kW</option><option value="solar10">Solar 5 to 10 kW</option><option value="solar15">Solar 10 to 15 kW</option><option value="minor">Minor electrical or plumbing</option></select>
     <label>Work</label><textarea id="eWork" placeholder="Water heater swap, fence, reroof"></textarea>
     <label>Your fee</label><input id="eFee" type="number" value="125" />
     <label>City fee, their card</label><input id="eCityFee" type="number" placeholder="Auto-fills; blank if unknown" />
@@ -214,9 +214,9 @@ function render(){
 // Base city permit fees (flat amounts only, from official schedules, 2026). Missing = unknown, left blank.
 // Add-ons (technology, state, plan check, zoning) are not included. Confirm with the city.
 var CITY_FEES = {
-  "Brawley": { fence:145, fencemasonry:145, waterheater:73, asof:"Brawley fee schedule eff. Feb 1, 2026; plus a processing fee and add-ons" },
-  "Calexico": { fence:152, fencemasonry:304, waterheater:114.5, asof:"Calexico fee schedule Apr 2026; fence is $152 wood or metal and $304 masonry, each up to 500 linear feet" },
-  "Imperial County": { waterheater:71.8, asof:"County fee schedule Oct 2023; may be higher now" }
+  "Brawley": { fence:145, fencemasonry:145, waterheater:73, reroof:218, hvac:73, furnace:73, panel:218, repipe:218, solar5:326, solar10:326, solar15:326, asof:"Brawley fee schedule eff. Feb 1, 2026; city also adds a processing fee and other add-ons" },
+  "Calexico": { fence:152, fencemasonry:304, waterheater:114.5, reroof:148.84, hvac:120, furnace:171.74, panel:229, solar5:150, solar10:300, solar15:450, asof:"Calexico fee schedule Apr 2026; fence is $152 wood or metal and $304 masonry, each up to 500 linear feet" },
+  "Imperial County": { waterheater:71.8, reroof:708.21, hvac:132.27, furnace:181.44, panel:162.82, repipe:47.21, solar5:500, solar10:500, solar15:500, minor:297.56, asof:"County fee schedule Oct 2023; may be higher now, and plan check or state fees may apply" }
 };
 var feeAuto = true;
 function autoFee(){
