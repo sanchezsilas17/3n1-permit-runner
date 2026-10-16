@@ -160,7 +160,7 @@ const CITIES = {
   "Holtville": { where:"121 W 5th Street", phone:"(760) 356-2912", links:[["Building","https://www.holtville.ca.gov/building-planning/building-and-planning/building-department/"]] }
 };
 const STEPS = ["estimate","packet ready","on the way","submitted","corrections","approved","paid"];
-let jobs = JSON.parse(localStorage.getItem(KEY) || "[]");
+let jobs; try { jobs = JSON.parse(localStorage.getItem(KEY) || "[]"); if (!Array.isArray(jobs)) jobs = []; } catch(e){ jobs = []; }
 function save(){ localStorage.setItem(KEY, JSON.stringify(jobs)); render(); }
 function esc(s){ return String(s == null ? "" : s).replace(/&/g,"&").replace(/</g,"<").replace(/>/g,">").replace(/"/g,""").replace(/'/g,"&#39;"); }
 function money(n){ return "$"+Math.round(Number(n)||0); }
@@ -234,7 +234,16 @@ document.getElementById("saveEstimate").onclick = function(){
   save();
   document.querySelector("[data-tab='work']").click();
 };
-function advance(i){ var n = STEPS.indexOf(jobs[i].status); jobs[i].status = STEPS[Math.min(STEPS.length-1, n+1)]; if (jobs[i].status==="paid") jobs[i].paid = true; save(); }
+function advance(i){
+  var j = jobs[i]; if (!j) return;
+  var cur = String(j.status || "").toLowerCase().trim();
+  var n = STEPS.indexOf(cur);
+  if (n < 0) { n = 0; j.status = STEPS[0]; }
+  if (n >= STEPS.length - 1) { j.status = "paid"; j.paid = true; save(); alert(j.customer + " is already at the last step (paid)."); return; }
+  j.status = STEPS[n + 1];
+  if (j.status === "paid") j.paid = true;
+  save();
+}
 document.getElementById("markPaid").onclick = function(){
   var i = document.getElementById("payJob").value;
   if (!jobs[i]) return;
