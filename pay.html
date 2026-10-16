@@ -146,13 +146,14 @@
     <p class="note">$150 is a measured sketch. $250 is a fixture planogram. $400 is a measured drawing they can put in the permit packet. Collect the fee before you draw the final.</p>
   </section>
   <section id="work2" class="panel" hidden></section>
+  <section id="jobDetail" class="panel" hidden></section>
 </div>
 <script>
 const KEY = "n3-runner-v1";
 const CITIES = {
   "El Centro": { where:"1275 Main Street", phone:"(760) 337-4508", links:[["Permits","https://www.cityofelcentro.org/164/Permits"],["Forms","https://www.cityofelcentro.org/1398/Planning-Applications"],["Application","https://www.cityofelcentro.org/DocumentCenter/View/248"]] },
   "Brawley": { where:"205 S Imperial Avenue", phone:"(760) 344-8622", links:[["Building","https://www.brawley-ca.gov/departments/development-services/building-division"]] },
-  "Calipatria": { where:"125 N Park Avenue", phone:"(760) 348-4141", links:[["Planning","https://www.calipatria.com/the-city/departments/planning/"],["Packet","http://www.calipatria.com/media/managed/forms/PERMIT_APPLICATION_PACKET_.pdf"]] },
+  "Calipatria": { where:"125 N Park Avenue", phone:"(760) 348-4141", links:[["Planning","https://www.calipatria.com/the-city/departments/planning/"],["City site","https://www.calipatria.com/"]] },
   "Calexico": { where:"608 Heber Avenue", phone:"(760) 768-2118", links:[["City site","https://www.calexico.ca.gov/"]] },
   "Imperial County": { where:"Civic Access", phone:"County Planning", links:[["Portal","https://imperialcountyca-energovweb.tylerhost.net/apps/selfservice#/home"],["Rules","https://www.icpds.com/building/requirements"],["Apply","https://publicworks.imperialcounty.org/apply/"]] },
   "Imperial": { where:"420 S Imperial Avenue", phone:"(760) 355-1152", links:[["Portal","https://www6.citizenserve.com/Portal/PortalController?Action=showPermit&ctzPagePrefix=Portal_&installationID=211"]] },
@@ -161,13 +162,13 @@ const CITIES = {
 const STEPS = ["estimate","packet ready","on the way","submitted","corrections","approved","paid"];
 let jobs = JSON.parse(localStorage.getItem(KEY) || "[]");
 function save(){ localStorage.setItem(KEY, JSON.stringify(jobs)); render(); }
-function esc(s){ var d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+function esc(s){ return String(s == null ? "" : s).replace(/&/g,"&").replace(/</g,"<").replace(/>/g,">").replace(/"/g,""").replace(/'/g,"&#39;"); }
 function money(n){ return "$"+Math.round(Number(n)||0); }
 function options(sel){
   sel.innerHTML = jobs.length ? jobs.map(function(j,i){ return "<option value='"+i+"'>"+esc(j.customer)+" · "+esc(j.address)+"</option>"; }).join("") : "<option value=''>No jobs yet</option>";
 }
 function jobCard(j,i){
-  return "<article class='job'><div class='row' style='justify-content:space-between'><h3>"+esc(j.customer)+"</h3><span class='pill'>"+esc(j.status)+"</span></div><p>"+esc(j.address)+" · "+esc(j.city)+"</p><p>"+esc(j.work||"")+"</p><p>Your fee "+money(j.fee)+" · city fee "+money(j.cityFee)+" · "+(j.paid? esc(j.payMethod||"paid") : "unpaid")+"</p><div class='row'><button class='ghost' onclick='advance("+i+")'>Next step</button><a class='ghost' href='tel:"+esc(j.phone)+"'>Call</a></div></article>";
+  return "<article class='job' data-i='"+i+"' style='cursor:pointer'><div class='row' style='justify-content:space-between'><h3>"+esc(j.customer)+"</h3><span class='pill'>"+esc(j.status)+"</span></div><p>"+esc(j.address)+" · "+esc(j.city)+"</p><p>"+esc(j.work||"")+"</p><p>Your fee "+money(j.fee)+" · city fee "+money(j.cityFee)+" · "+(j.paid? esc(j.payMethod||"paid") : "unpaid")+"</p><div class='row'><button class='ghost' onclick='event.stopPropagation();advance("+i+")'>Next step</button>"+(j.phone ? "<a class='ghost' onclick='event.stopPropagation()' href='tel:"+esc(j.phone)+"'>Call</a>" : "")+"<button class='ghost' onclick='event.stopPropagation();openJob("+i+")'>Details</button></div></article>";
 }
 function render(){
   var q = (document.getElementById("jobSearch").value || "").toLowerCase();
@@ -186,10 +187,40 @@ function render(){
   var gi = document.getElementById("signJob").value;
   document.getElementById("signPreview").innerHTML = (jobs[gi] && (jobs[gi].signedForm || jobs[gi].signature)) ? "<img class='scan' src='"+(jobs[gi].signedForm || jobs[gi].signature)+"' alt='Signed permit form' />" : "";
 }
+
+function openJob(i){
+  var j = jobs[i]; if (!j) return;
+  var box = document.getElementById("jobDetail");
+  box.innerHTML = "<article class='card'><h3>"+esc(j.customer)+"</h3><span class='pill'>"+esc(j.status)+"</span>"
+    + "<p>Phone: "+esc(j.phone || "none")+"</p><p>Address: "+esc(j.address)+"</p><p>City: "+esc(j.city)+"</p><p>Work: "+esc(j.work || "none")+"</p>"
+    + "<p>Your fee "+money(j.fee)+" · city fee "+money(j.cityFee)+" · "+(j.paid ? esc(j.payMethod || "paid") : "unpaid")+"</p>"
+    + "<p>Scans: "+((j.scans || []).length)+" · Signature: "+(j.signature ? "saved" : "none")+"</p>"
+    + "<p>"+STEPS.map(function(s){ return (s===j.status ? "<b>"+s+"</b>" : s); }).join(" → ")+"</p>"
+    + "<div class='row'>"+(j.phone ? "<a class='ghost' href='tel:"+esc(j.phone)+"'>Call</a>" : "")
+    + "<a class='ghost' target='_blank' rel='noopener' href='https://www.google.com/maps/search/?api=1&query="+encodeURIComponent((j.address || "")+" "+(j.city || ""))+"'>Map</a>"
+    + "<button class='ghost' onclick='advance("+i+");openJob("+i+")'>Next step</button>"
+    + "<button class='ghost' onclick='closeJob()'>Back</button></div></article>"
+    + (j.city && CITIES[j.city] ? "<article class='card'><h3>"+esc(j.city)+" office</h3><p>"+esc(CITIES[j.city].where)+" · "+esc(CITIES[j.city].phone)+"</p>"+CITIES[j.city].links.map(function(l){ return "<a class='link' target='_blank' rel='noopener' href='"+l[1]+"'>"+esc(l[0])+"</a>"; }).join("")+"</article>" : "");
+  document.getElementById("work").hidden = true;
+  document.getElementById("jobsBar").hidden = true;
+  box.hidden = false;
+}
+function closeJob(){
+  document.getElementById("jobDetail").hidden = true;
+  document.getElementById("work").hidden = false;
+  document.getElementById("jobsBar").hidden = false;
+  render();
+}
+document.getElementById("work").addEventListener("click", function(e){
+  var card = e.target.closest ? e.target.closest(".job") : null;
+  if (card && card.dataset.i !== undefined) openJob(Number(card.dataset.i));
+});
 document.querySelectorAll(".tabs button").forEach(function(btn){
   btn.onclick = function(){
+    if (btn.dataset.tab === "map") { goMap(); return; }
     document.querySelectorAll(".tabs button").forEach(function(b){ b.classList.remove("on"); });
     btn.classList.add("on");
+    document.getElementById("jobDetail").hidden = true;
     ["work","estimate","cities","pay","scan","sign","help","work2","plan"].forEach(function(id){ document.getElementById(id).hidden = id !== btn.dataset.tab; });
     document.getElementById("jobsBar").hidden = btn.dataset.tab !== "work";
     render();
@@ -366,11 +397,10 @@ function mapUrl(){
 function goMap(){
   var a = document.createElement("a");
   a.href = mapUrl();
-  a.target = "_top";
+  a.target = "_blank"; a.rel = "noopener";
   document.body.appendChild(a);
   a.click();
 }
-document.querySelector("[data-tab='map']").onclick = function(){ setTimeout(goMap, 50); };
 document.getElementById("earthBtn").onclick = function(e){ e.preventDefault(); goMap(); };
 var planning = false;
 function planPos(e){ var r = plan.getBoundingClientRect(); var t = e.touches ? e.touches[0] : e; return {x:(t.clientX-r.left)*(plan.width/r.width), y:(t.clientY-r.top)*(plan.height/r.height)}; }
