@@ -140,11 +140,15 @@
       <option value="250">Planogram with fixture layout, $250</option>
       <option value="400">Measured drawing for a permit packet, $400</option>
     </select>
-    <label>Draw on the plan</label>
+    <label id="drawKitTitle">Draw on the plan</label>
+    <p class="note" id="drawKitHint"></p>
+    <div class="row" id="stampBar"></div>
     <canvas id="planPad" width="700" height="420"></canvas>
     <div class="row">
+      <button class="ghost" id="undoPlan" type="button">Undo</button>
       <button class="ghost" id="clearPlan" type="button">Clear sketch</button>
     </div>
+    <div id="drawChecklistBox" hidden><label id="drawChecklistTitle">Plan check</label><ul id="drawChecklist"></ul></div>
     <button class="primary" id="savePlanFee" type="button">Add drawing fee to receipt</button>
     <p class="note">$150 is a measured sketch. $250 is a fixture planogram. $400 is a measured drawing they can put in the permit packet. Collect the fee before you draw the final.</p>
   </section>
@@ -252,10 +256,11 @@ function autoFee(){
 }
 document.getElementById("eCityFee").addEventListener("input", function(){ feeAuto = false; });
 document.getElementById("eCity").addEventListener("change", function(){ feeAuto = true; autoFee(); });
-document.getElementById("eWorkType").addEventListener("change", function(){ feeAuto = true; autoFee(); });
+document.getElementById("eWorkType").addEventListener("change", function(){ feeAuto = true; autoFee(); setDrawKit(document.getElementById("eWorkType").value); });
 function openJob(i){
   var j = jobs[i]; if (!j) return;
   var box = document.getElementById("jobDetail");
+  setDrawKit(j.workType || "");
   box.innerHTML = "<article class='card'><h3>"+esc(j.customer)+"</h3><span class='pill'>"+esc(j.status)+"</span>"
     + "<p>Phone: "+esc(j.phone || "none")+"</p><p>Address: "+esc(j.address)+"</p><p>City: "+esc(j.city)+"</p><p>Work: "+esc(j.work || "none")+"</p>"+(j.workType && FOOD_NOTES[j.workType] ? "<p class='note'>"+esc(FOOD_NOTES[j.workType])+"</p>" : "")
     + "<p>Your fee "+money(j.fee)+" · city fee "+money(j.cityFee)+" · "+(j.paid ? esc(j.payMethod || "paid") : "unpaid")+"</p>"
@@ -314,6 +319,7 @@ function editJob(i){
   document.getElementById("eFee").value = j.fee == null ? "" : j.fee;
   document.getElementById("eCityFee").value = j.cityFee == null ? "" : j.cityFee;
   feeAuto = false;
+  setDrawKit(j.workType || "");
   document.getElementById("saveEstimate").textContent = "Save changes to this job";
   document.querySelector("[data-tab='estimate']").click();
 }
@@ -477,9 +483,116 @@ document.getElementById("downloadForm").onclick = function(){
 document.getElementById("jobSearch").addEventListener("input", render);
 var plan = document.getElementById("planPad");
 var pctx = plan.getContext("2d");
+// Draw kits: type-specific template, stamps, checklist and a suggested (not required) drawing fee.
+// Fees are the preparer's own drawing prices (150, 250, 400), not official fees.
+var FOOD_STAMPS = {
+  sink3:["3-comp sink","rect"], hand:["Handwash","circle"], prep:["Prep table","rect"], fridge:["Fridge","rect"], hood:["Hood","rect"],
+  grease:["Grease trap","circle"], trash:["Trash","circle"], toilet:["Restroom","circle"], booth:["Booth outline","outline"], canopy:["Canopy","outline"],
+  mop:["Mop sink","rect"], dry:["Dry storage","rect"], water:["Water tank","circle"], waste:["Waste tank","circle"], cook:["Cook line","rect"], door:["Door","line"]
+};
+function pick(map, keys){ return keys.map(function(k){ return [k, map[k][0], map[k][1]]; }); }
+var DRAW_KITS = {
+  generic: { title:"Draw on the plan", tpl:"room", stamps:[], checklist:[], fee:"", hint:"" },
+  food_retail: { title:"Food facility floor plan", tpl:"room", fee:"400",
+    hint:"Place each fixture, then draw walls, doors and plumbing lines. Suggested drawing: measured drawing for a permit packet.",
+    stamps: pick(FOOD_STAMPS, ["sink3","hand","prep","fridge","hood","grease","trash","toilet","mop","dry","cook","door"]),
+    checklist:["Scale and north arrow, room dimensions","Equipment layout with each item labeled","3-compartment warewash sink and drainboards","Handwash sinks at prep and in restrooms","Mop or janitorial sink","Hood and exhaust over cooking equipment","Grease trap or interceptor location","Restrooms for customers and employees","Refrigeration and dry storage","Trash and recycling area","Floor, wall and ceiling finish schedule","Confirm what the county plan check expects"] },
+  food_mobile: { title:"Mobile food facility layout", tpl:"truck", fee:"250",
+    hint:"Top view of the truck or cart interior. Suggested drawing: planogram with fixture layout.",
+    stamps: pick(FOOD_STAMPS, ["sink3","hand","prep","fridge","hood","cook","water","waste","trash","door"]),
+    checklist:["Unit length and width, serving window","3-compartment sink (or approved alternative)","Handwash sink with hot and cold water","Fresh and waste water tank sizes (waste larger than fresh)","Cooking equipment and hood","Refrigeration, prep surfaces","Commissary name and address","Propane and power sources","Confirm what the county plan check expects"] },
+  food_temp: { title:"Temporary food booth layout", tpl:"booth", fee:"150",
+    hint:"Booth top view. Suggested drawing: measured sketch.",
+    stamps: pick(FOOD_STAMPS, ["booth","canopy","sink3","hand","prep","fridge","cook","trash","water","waste"]),
+    checklist:["Booth size and overhead covering","Handwash station with soap, towels, catch bucket","Warewash setup or single-use utensils","Food prep and cooking layout","Cold holding and thermometer","Water supply and wastewater container","Trash container","Confirm what the county plan check expects"] },
+  food_cottage: { title:"Home kitchen layout", tpl:"room", fee:"150",
+    hint:"Sketch the home kitchen areas used for the food. Suggested drawing: measured sketch.",
+    stamps: pick(FOOD_STAMPS, ["sink3","hand","prep","fridge","dry","trash","door"]),
+    checklist:["Kitchen layout with sink, prep and storage areas","Where food, packaging and ingredients are stored","Handwashing sink location","Confirm what the county expects"] },
+  fence: { title:"Fence plot plan", tpl:"lot", fee:"150",
+    hint:"Draw the property line and fence run. Suggested drawing: measured sketch.",
+    stamps:[["post","Post","circle"],["gate","Gate","line"],["corner","Corner post","circle"],["house","House","outline"],["drive","Driveway","outline"],["sbf","Front setback __ ft","rect"],["sbs","Side setback __ ft","rect"],["sbr","Rear setback __ ft","rect"]],
+    checklist:["Property lines with lengths","Fence location and total length","Height and material","Gate locations and widths","Setbacks from street and sides","Corner visibility triangle if near an intersection"] },
+  waterheater: { title:"Water heater layout", tpl:"closet", fee:"150",
+    hint:"Closet or garage view. Suggested drawing: measured sketch.",
+    stamps:[["tank","Tank","circle"],["tpr","TPR discharge","line"],["gas","Gas line","line"],["vent","Vent","circle"],["straps","Seismic straps","line"],["pan","Drain pan","outline"],["shutoff","Shutoff valve","circle"],["door","Door","line"]],
+    checklist:["Tank location and size","TPR discharge pipe to safe termination","Gas line, shutoff and sediment trap","Vent route and clearance","Two seismic straps","Drain pan if required","Expansion tank if required"] },
+  solar: { title:"Roof and panel layout", tpl:"roof", fee:"250",
+    hint:"Roof outline with panel arrays. Suggested drawing: planogram with fixture layout.",
+    stamps:[["array","Panel array","rect"],["inv","Inverter","rect"],["main","Main panel","rect"],["disc","AC disconnect","rect"],["meter","Meter","circle"],["conduit","Conduit run","line"],["setback","Fire setback","outline"],["north","North","circle"]],
+    checklist:["Roof plan with dimensions and pitch","Panel array locations and count","Fire access pathways and setbacks","Inverter and disconnect locations","Main service panel and meter","Conduit routing","Site address and north arrow"] },
+  panel: { title:"Electrical panel location", tpl:"closet", fee:"150",
+    hint:"Wall or room view. Suggested drawing: measured sketch.",
+    stamps:[["main","Main panel","rect"],["meter","Meter","circle"],["sub","Subpanel","rect"],["ground","Ground rod","circle"],["conduit","Conduit run","line"],["clear","Working clearance","outline"],["door","Door","line"]],
+    checklist:["Panel location with 30 in wide by 36 in deep clearance","Meter location","Service conduit route","Grounding electrode","Panel schedule or circuit count"] }
+};
+var DRAW_MAP = { food_retail:"food_retail", food_mobile_proc:"food_mobile", food_mobile_ltd:"food_mobile", food_mobile_non:"food_mobile", food_tff3:"food_temp", food_tff15:"food_temp", food_cottageA:"food_cottage", food_cottageB:"food_cottage",
+  fence:"fence", fencemasonry:"fence", waterheater:"waterheater", solar5:"solar", solar10:"solar", solar15:"solar", reroof:"solar", panel:"panel" };
+var drawKitKey = "generic", drawOps = [], drawTpl = "room";
+function kitFor(type){ return DRAW_KITS[DRAW_MAP[type] || "generic"] ? (DRAW_MAP[type] || "generic") : "generic"; }
+function setDrawKit(type){
+  var key = kitFor(type);
+  if (key === drawKitKey) return;
+  drawKitKey = key; drawOps = [];
+  var kit = DRAW_KITS[key];
+  document.getElementById("drawKitTitle").textContent = kit.title;
+  document.getElementById("drawKitHint").textContent = kit.hint;
+  var bar = document.getElementById("stampBar"); bar.innerHTML = "";
+  kit.stamps.forEach(function(st){
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "ghost stamp"; b.dataset.stamp = st[0]; b.textContent = "+ " + st[1];
+    b.onclick = function(){ addStamp(st); };
+    bar.appendChild(b);
+  });
+  var cl = document.getElementById("drawChecklist"); cl.innerHTML = "";
+  kit.checklist.forEach(function(t){ var li = document.createElement("li"); li.textContent = t; cl.appendChild(li); });
+  document.getElementById("drawChecklistBox").hidden = !kit.checklist.length;
+  document.getElementById("drawChecklistTitle").textContent = key.indexOf("food") === 0 ? "What plan check expects on the plan" : "Checklist for the drawing";
+  if (kit.fee) document.getElementById("planFee").value = kit.fee;
+  drawRoom();
+}
+function stampSize(st){ return st[2] === "outline" ? [150,70] : st[2] === "line" ? [100,28] : [96,44]; }
+function addStamp(st){
+  var n = drawOps.filter(function(o){ return o.t === "stamp"; }).length;
+  var sz = stampSize(st);
+  drawOps.push({ t:"stamp", k:st[0], label:st[1], shape:st[2], w:sz[0], h:sz[1], x:60 + (n % 5) * 120, y:60 + Math.floor(n / 5) % 5 * 56 });
+  drawRoom();
+}
+function drawStamp(o){
+  pctx.save();
+  pctx.lineWidth = 3; pctx.strokeStyle = "#0a5"; pctx.fillStyle = "rgba(0,170,85,0.12)";
+  if (o.shape === "circle") { pctx.beginPath(); pctx.arc(o.x + o.w / 2, o.y + o.h / 2, Math.min(o.w, o.h) / 2, 0, 6.2832); pctx.fill(); pctx.stroke(); }
+  else if (o.shape === "line") { pctx.beginPath(); pctx.moveTo(o.x, o.y + o.h / 2); pctx.lineTo(o.x + o.w, o.y + o.h / 2); pctx.stroke(); }
+  else if (o.shape === "outline") { pctx.setLineDash([8,6]); pctx.strokeRect(o.x, o.y, o.w, o.h); }
+  else { pctx.fillRect(o.x, o.y, o.w, o.h); pctx.strokeRect(o.x, o.y, o.w, o.h); }
+  pctx.setLineDash([]);
+  pctx.fillStyle = "#111"; pctx.font = "14px sans-serif";
+  pctx.fillText(o.label, o.x + 2, o.shape === "line" ? o.y + o.h / 2 - 6 : o.y + o.h / 2 + 5);
+  pctx.restore();
+}
+function drawTemplate(tpl){
+  pctx.save();
+  pctx.strokeStyle = "#999"; pctx.fillStyle = "#555"; pctx.lineWidth = 2; pctx.font = "16px sans-serif";
+  if (tpl === "lot") {
+    pctx.setLineDash([10,6]); pctx.strokeRect(40,40,620,300); pctx.setLineDash([]);
+    pctx.fillText("Property line", 300, 58); pctx.fillText("Street", 320, 372);
+    pctx.fillText("Setback", 48, 80); pctx.strokeRect(80,80,540,220);
+  } else if (tpl === "closet") {
+    pctx.strokeRect(200,40,300,300); pctx.fillText("Closet or garage wall", 260, 58);
+  } else if (tpl === "roof") {
+    pctx.beginPath(); pctx.moveTo(60,320); pctx.lineTo(60,120); pctx.lineTo(350,50); pctx.lineTo(640,120); pctx.lineTo(640,320); pctx.closePath(); pctx.stroke();
+    pctx.fillText("Roof outline (N up)", 270, 340);
+  } else if (tpl === "truck") {
+    pctx.strokeRect(120,100,460,160); pctx.fillText("Serving window", 300, 92); pctx.fillText("Unit interior", 300, 280);
+  } else if (tpl === "booth") {
+    pctx.strokeRect(150,80,400,220); pctx.fillText("Booth, front open to customers", 230, 322);
+  }
+  pctx.restore();
+}
 function drawRoom(){
   var L = Number(document.getElementById("mLen").value)||0;
   var W = Number(document.getElementById("mWid").value)||0;
+  var tpl = DRAW_KITS[drawKitKey].tpl;
   pctx.fillStyle = "#fff";
   pctx.fillRect(0,0,plan.width,plan.height);
   pctx.strokeStyle = "#111";
@@ -489,6 +602,13 @@ function drawRoom(){
   pctx.fillStyle = "#111";
   pctx.fillText(L+" ft", 300, 30);
   pctx.fillText(W+" ft", 8, 190);
+  if (tpl !== "room") drawTemplate(tpl);
+  drawOps.forEach(function(o){
+    if (o.t === "stamp") { drawStamp(o); return; }
+    pctx.save(); pctx.strokeStyle = "#111"; pctx.lineWidth = 4; pctx.beginPath();
+    o.pts.forEach(function(p, n){ if (n) pctx.lineTo(p.x, p.y); else pctx.moveTo(p.x, p.y); });
+    pctx.stroke(); pctx.restore();
+  });
   var area = Math.round(L*W);
   document.getElementById("measureOut").textContent = L+" ft by "+W+" ft. Area "+area+" sq ft. Wall length "+Math.round(2*(L+W))+" ft.";
 }
@@ -510,12 +630,30 @@ function goMap(){
   a.click();
 }
 document.getElementById("earthBtn").onclick = function(e){ e.preventDefault(); goMap(); };
-var planning = false;
-function planPos(e){ var r = plan.getBoundingClientRect(); var t = e.touches ? e.touches[0] : e; return {x:(t.clientX-r.left)*(plan.width/r.width), y:(t.clientY-r.top)*(plan.height/r.height)}; }
-plan.addEventListener("pointerdown", function(e){ planning = true; var p = planPos(e); pctx.beginPath(); pctx.moveTo(p.x,p.y); });
-plan.addEventListener("pointermove", function(e){ if (!planning) return; var p = planPos(e); pctx.lineTo(p.x,p.y); pctx.stroke(); });
-plan.addEventListener("pointerup", function(){ planning = false; });
-document.getElementById("clearPlan").onclick = drawRoom;
+var planning = false, dragOp = null, dragDX = 0, dragDY = 0, curStroke = null;
+function planPos(e){ var r = plan.getBoundingClientRect(); var t = e.touches ? e.touches[0] : e; return {x:(t.clientX-r.left)*(plan.width/(r.width||plan.width)), y:(t.clientY-r.top)*(plan.height/(r.height||plan.height))}; }
+function stampAt(p){
+  for (var n = drawOps.length - 1; n >= 0; n--) { var o = drawOps[n]; if (o.t === "stamp" && p.x >= o.x && p.x <= o.x + o.w && p.y >= o.y - 8 && p.y <= o.y + o.h + 8) return o; }
+  return null;
+}
+plan.addEventListener("pointerdown", function(e){
+  var p = planPos(e), hit = stampAt(p);
+  if (hit) { dragOp = hit; dragDX = p.x - hit.x; dragDY = p.y - hit.y; return; }
+  planning = true; curStroke = { t:"stroke", pts:[p] }; drawOps.push(curStroke);
+  pctx.beginPath(); pctx.moveTo(p.x,p.y);
+});
+plan.addEventListener("pointermove", function(e){
+  var p = planPos(e);
+  if (dragOp) { dragOp.x = p.x - dragDX; dragOp.y = p.y - dragDY; drawRoom(); return; }
+  if (!planning) return;
+  curStroke.pts.push(p); pctx.lineTo(p.x,p.y); pctx.stroke();
+});
+function planUp(){ planning = false; dragOp = null; if (curStroke && curStroke.pts.length < 2) { drawOps.splice(drawOps.indexOf(curStroke), 1); } curStroke = null; }
+plan.addEventListener("pointerup", planUp);
+plan.addEventListener("pointerleave", planUp);
+document.getElementById("clearPlan").onclick = function(){ drawOps = []; drawRoom(); };
+document.getElementById("undoPlan").onclick = function(){ drawOps.pop(); drawRoom(); };
+document.getElementById("calcMeasure").onclick = drawRoom;
 document.getElementById("savePlanFee").onclick = function(){
   var fee = document.getElementById("planFee").value;
   var label = document.getElementById("planFee").selectedOptions[0].text;
