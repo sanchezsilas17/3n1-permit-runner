@@ -69,7 +69,7 @@
     <label>City</label>
     <select id="eCity"><option>El Centro</option><option>Brawley</option><option>Calipatria</option><option>Calexico</option><option>Imperial County</option><option>Imperial</option><option>Holtville</option></select>
     <label>Work type</label>
-    <select id="eWorkType"><option value="">Other / not listed</option><option value="fence">Fence (wood or metal)</option><option value="fencemasonry">Fence (block or masonry wall)</option><option value="waterheater">Water heater</option><option value="reroof">Reroof</option><option value="hvac">AC replacement</option><option value="furnace">Furnace or heat pump</option><option value="panel">Electrical panel upgrade</option><option value="repipe">Repipe or gas line</option><option value="solar5">Solar up to 5 kW</option><option value="solar10">Solar 5 to 10 kW</option><option value="solar15">Solar 10 to 15 kW</option><option value="minor">Minor electrical or plumbing</option></select>
+    <select id="eWorkType"><option value="">Other / not listed</option><option value="fence">Fence (wood or metal)</option><option value="fencemasonry">Fence (block or masonry wall)</option><option value="waterheater">Water heater</option><option value="reroof">Reroof</option><option value="hvac">AC replacement</option><option value="furnace">Furnace or heat pump</option><option value="panel">Electrical panel upgrade</option><option value="repipe">Repipe or gas line</option><option value="solar5">Solar up to 5 kW</option><option value="solar10">Solar 5 to 10 kW</option><option value="solar15">Solar 10 to 15 kW</option><option value="minor">Minor electrical or plumbing</option><option value="food_retail">Food: Restaurant / retail food facility (plan check + health permit)</option><option value="food_mobile_proc">Food: Mobile food truck, processing</option><option value="food_mobile_ltd">Food: Mobile food truck, limited prep</option><option value="food_mobile_non">Food: Mobile food cart, non-processing</option><option value="food_tff3">Food: Temporary food event, 1 to 3 days</option><option value="food_tff15">Food: Temporary food event, 4 to 15 days</option><option value="food_cottageA">Food: Cottage food, Class A (registration)</option><option value="food_cottageB">Food: Cottage food, Class B (permit)</option><option value="food_handler">Food: Food handler or manager card</option><option value="food_bizlic">Food: Business license for food business</option></select>
     <label>Work</label><textarea id="eWork" placeholder="Water heater swap, fence, reroof"></textarea>
     <label>Your fee</label><input id="eFee" type="number" value="125" />
     <label>City fee, their card</label><input id="eCityFee" type="number" placeholder="Auto-fills; blank if unknown" />
@@ -218,11 +218,35 @@ var CITY_FEES = {
   "Calexico": { fence:152, fencemasonry:304, waterheater:114.5, reroof:148.84, hvac:120, furnace:171.74, panel:229, solar5:150, solar10:300, solar15:450, asof:"Calexico fee schedule Apr 2026; fence is $152 wood or metal and $304 masonry, each up to 500 linear feet" },
   "Imperial County": { waterheater:71.8, reroof:708.21, hvac:132.27, furnace:181.44, panel:162.82, repipe:47.21, solar5:500, solar10:500, solar15:500, minor:297.56, asof:"County fee schedule Oct 2023; may be higher now, and plan check or state fees may apply" }
 };
+
+// Food permits. Imperial County Public Health Dept, Environmental Health is the food permitting authority for all Imperial Valley cities.
+// Source: https://www.icphd.org/environmental-health/environmental-health-fees (adopted fee schedule 7/29/25). Flat annual/event permit amounts only.
+// Retail food permits vary by size and risk, and plan review is time and materials with a deposit, so those are left blank on purpose.
+var FOOD_ASOF = "Imperial County Environmental Health fee schedule adopted 7/29/25 (icphd.org); health permit only, plan review and re-inspection fees are extra";
+var FOOD_FEES = { food_mobile_proc:459, food_mobile_ltd:375, food_mobile_non:330, food_tff3:50, food_tff15:283, food_cottageA:233, food_cottageB:320 };
+var FOOD_NOTES = {
+  food_retail: "No flat fee: the annual permit depends on size and risk ($558 to $1,572), and plan review is time and materials with a $500 to $1,500 deposit. Checklist: EH plan review application and plans, building and fire inspection, health inspection before opening, fictitious business name, seller's permit (CDTFA), CFPM certificate, city business license.",
+  food_mobile_proc: "Annual MFF permit, not prorated. Checklist: EH plan review if new or changed, HCD insignia if occupied with plumbing, gas or power, commissary agreement, inspection, fire inspection, seller's permit, fictitious business name, food handler cards, CFPM if required.",
+  food_mobile_ltd: "Annual MFF permit, not prorated. Checklist: EH plan review if new or changed, HCD insignia if needed, commissary agreement, inspection, seller's permit, fictitious business name, food handler cards.",
+  food_mobile_non: "Annual MFF permit, not prorated. Checklist: plan review if new or changed, commissary agreement if needed, inspection, seller's permit, food handler cards.",
+  food_tff3: "For-profit and non-profit are both $50. Apply early: late submittal adds $75. Checklist: TFF application, event organizer permit ($25 per vendor, if there is an organizer), handwash setup, seller's permit for sales, food handler cards.",
+  food_tff15: "Filled with the for-profit amount. Non-profit is $141. Late submittal adds $75. Checklist: TFF application, handwash setup, seller's permit, food handler cards. 16 to 25 days is $320 for-profit.",
+  food_cottageA: "Class A registration (direct sales of non-hazardous foods). Checklist: CFO application and recipes and labels, food processor card, home kitchen approval, city zoning check, business license.",
+  food_cottageB: "Class B permit (direct and indirect sales). Checklist: CFO application, recipes and labels, food processor card, home kitchen inspection, city zoning check, business license.",
+  food_handler: "No county fee. Cards come from state-approved providers (ANSI accredited) and are priced by the provider. Checklist: food handler card for staff, CFPM (ServSafe Manager or similar) for the manager.",
+  food_bizlic: "Fee set by the city or county, not auto-filled. Checklist: fictitious business name, seller's permit, zoning check, health permit proof, fire inspection."
+};
 var feeAuto = true;
 function autoFee(){
   var city = document.getElementById("eCity").value, type = document.getElementById("eWorkType").value;
   var f = document.getElementById("eCityFee"), note = document.getElementById("feeNote");
   var row = CITY_FEES[city], v = row && type ? row[type] : undefined;
+  if (type && FOOD_NOTES[type]) {
+    var fv = FOOD_FEES[type];
+    if (fv !== undefined) { f.value = fv; feeAuto = true; note.textContent = "Auto-filled health permit fee. " + FOOD_ASOF + ". " + FOOD_NOTES[type]; }
+    else { if (feeAuto) f.value = ""; note.textContent = FOOD_NOTES[type]; }
+    return;
+  }
   if (v !== undefined) { f.value = v; feeAuto = true; note.textContent = "Auto-filled base fee. " + row.asof + ". Confirm with the city."; }
   else if (feeAuto) { f.value = ""; note.textContent = type ? "No confirmed fee for this city and work type. Enter it yourself." : ""; }
 }
@@ -233,7 +257,7 @@ function openJob(i){
   var j = jobs[i]; if (!j) return;
   var box = document.getElementById("jobDetail");
   box.innerHTML = "<article class='card'><h3>"+esc(j.customer)+"</h3><span class='pill'>"+esc(j.status)+"</span>"
-    + "<p>Phone: "+esc(j.phone || "none")+"</p><p>Address: "+esc(j.address)+"</p><p>City: "+esc(j.city)+"</p><p>Work: "+esc(j.work || "none")+"</p>"
+    + "<p>Phone: "+esc(j.phone || "none")+"</p><p>Address: "+esc(j.address)+"</p><p>City: "+esc(j.city)+"</p><p>Work: "+esc(j.work || "none")+"</p>"+(j.workType && FOOD_NOTES[j.workType] ? "<p class='note'>"+esc(FOOD_NOTES[j.workType])+"</p>" : "")
     + "<p>Your fee "+money(j.fee)+" · city fee "+money(j.cityFee)+" · "+(j.paid ? esc(j.payMethod || "paid") : "unpaid")+"</p>"
     + "<p>Scans: "+((j.scans || []).length)+" · Signature: "+(j.signature ? "saved" : "none")+"</p>"
     + "<p>"+STEPS.map(function(s){ return (s===j.status ? "<b>"+s+"</b>" : s); }).join(" → ")+"</p>"
@@ -286,6 +310,7 @@ function editJob(i){
   document.getElementById("eAddress").value = j.address || "";
   document.getElementById("eCity").value = j.city || "";
   document.getElementById("eWork").value = j.work || "";
+  document.getElementById("eWorkType").value = j.workType || "";
   document.getElementById("eFee").value = j.fee == null ? "" : j.fee;
   document.getElementById("eCityFee").value = j.cityFee == null ? "" : j.cityFee;
   feeAuto = false;
@@ -296,7 +321,7 @@ document.getElementById("saveEstimate").onclick = function(){
   var customer = document.getElementById("eCustomer").value.trim();
   var address = document.getElementById("eAddress").value.trim();
   if (!customer || !address) { alert("Customer and address are required."); return; }
-  var vals = { customer:customer, phone:document.getElementById("ePhone").value.trim(), address:address, city:document.getElementById("eCity").value, work:document.getElementById("eWork").value.trim(), fee:Number(document.getElementById("eFee").value||0), cityFee:Number(document.getElementById("eCityFee").value||0) };
+  var vals = { customer:customer, phone:document.getElementById("ePhone").value.trim(), address:address, city:document.getElementById("eCity").value, work:document.getElementById("eWork").value.trim(), workType:document.getElementById("eWorkType").value, fee:Number(document.getElementById("eFee").value||0), cityFee:Number(document.getElementById("eCityFee").value||0) };
   if (editIdx !== null && jobs[editIdx]) {
     for (var k in vals) jobs[editIdx][k] = vals[k];
     editIdx = null;
